@@ -6,6 +6,10 @@ The design follows Specialty Produce's public write-up of how they match restaur
 
 **Result:** on 100 held-out orders, Jev matched 96.2% of lines exactly. The 80% of lines confident enough to skip review were all correct, and every wrong line was sent to review.
 
+![The web app matching an order full of typos, then a reviewer confirming "RAZZ" as raspberries and changing "HOTHOUSE CUKES" to English cucumbers](docs/demo.gif)
+
+*The [web app](#web-app) with live Jev: an order full of typos matched in under a second, then a second order where a person checks the two lines Jev wasn't sure about.*
+
 ## The problem
 
 A produce distributor gets orders by text, voicemail and fax, written however the chef likes: "cs kale", "5# bananas", "2 cases baby bellas", "grass x2". Every line has to become exactly one SKU and unit from the catalog.
