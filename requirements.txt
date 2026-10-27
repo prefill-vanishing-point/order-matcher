@@ -1,0 +1,2 @@
+# Only the web app needs this; the engine, CLI and tests use the standard library.
+waitress==3.0.2

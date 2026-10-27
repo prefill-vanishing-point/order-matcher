@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Order Matcher</title>
+<meta name="description" content="Paste a restaurant's produce order in the chef's own words and see each line matched to an exact catalog item.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,800&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/styles.css">
+<script src="/app.js" defer></script>
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap masthead-inner">
+    <a class="brand" href="/">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="3" y="11" width="26" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/>
+        <path d="M3 18h26M10 11V28M22 11V28" fill="none" stroke="currentColor" stroke-width="2.4"/>
+        <path d="M16 11c0-5 3-7.5 7-8-0.4 4.6-3 7.6-7 8Z" fill="currentColor"/>
+      </svg>
+      <span>Order Matcher</span>
+    </a>
+    <span class="engine" id="engine-badge" hidden></span>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="intro">
+    <h1>Turn chef shorthand into a clean order</h1>
+    <p class="lead">Restaurants order by text, voicemail and fax, in their own words. Paste an order the way a chef would write it. Each line is matched to one item in the catalog, and anything uncertain waits for a person to check.</p>
+  </section>
+
+  <div class="workspace">
+    <section class="panel order-panel" aria-labelledby="order-heading">
+      <h2 id="order-heading">Incoming order</h2>
+
+      <div class="field">
+        <label for="customer">Restaurant</label>
+        <select id="customer" disabled></select>
+        <details class="usual" id="usual">
+          <summary id="usual-summary">What they usually order</summary>
+          <ul id="usual-list"></ul>
+        </details>
+      </div>
+
+      <div class="field">
+        <label for="order">Order, as the chef wrote it</label>
+        <textarea id="order" rows="10" spellcheck="false" autocomplete="off" disabled
+                  placeholder="2 cs portobellos&#10;5# limes&#10;strawbs x3"></textarea>
+        <div class="order-meta">
+          <span id="line-count">0 lines</span>
+          <span id="char-count"></span>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="label" id="examples-label">Try an example</span>
+        <div class="chips" id="examples" role="group" aria-labelledby="examples-label"></div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn solid large" id="match" disabled>Match order</button>
+        <span class="hint" id="kbd-hint"></span>
+      </div>
+      <p class="form-error" id="form-error" role="alert" hidden></p>
+    </section>
+
+    <section class="panel result-panel" id="result-panel" aria-labelledby="result-heading" aria-busy="true">
+      <div class="result-head">
+        <h2 id="result-heading">Matched order</h2>
+        <button type="button" class="btn" id="copy" hidden>Copy as CSV</button>
+      </div>
+      <div class="summary" id="summary" aria-live="polite"></div>
+      <p class="source" id="source"></p>
+      <div id="status"></div>
+      <ol class="lines" id="lines"></ol>
+    </section>
+  </div>
+
+  <section class="how" aria-labelledby="how-heading">
+    <h2 id="how-heading">How each line is decided</h2>
+    <ol class="steps">
+      <li>
+        <h3>Start with what this restaurant buys</h3>
+        <p>Their last 90 days of purchases become the options, because most lines are reorders. "None of these" is always an option too.</p>
+      </li>
+      <li>
+        <h3>Look wider when unsure</h3>
+        <p>Below 0.85 confidence, or on "none of these", it searches what every restaurant has bought recently and asks again.</p>
+      </li>
+      <li>
+        <h3>Keep the chef's unit</h3>
+        <p>If the order says case, lb or each, the line uses that unit. With no unit, it uses the one this restaurant usually orders.</p>
+      </li>
+      <li>
+        <h3>Flag what needs a person</h3>
+        <p>Lines under 0.90 confidence wait for someone to confirm or change them. Everything else is ready to send.</p>
+      </li>
+    </ol>
+    <p class="evidence" id="evidence" hidden></p>
+  </section>
+</main>
+
+<footer class="wrap footer">
+  <p>Demo data. The restaurants, catalog and purchase history are synthetic. <span id="footer-engine"></span></p>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

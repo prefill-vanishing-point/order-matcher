@@ -37,6 +37,12 @@ class Catalog:
     def __len__(self) -> int:
         return len(self._skus)
 
+    def __iter__(self):
+        return iter(self._skus.values())
+
+    def get(self, sku_id: str) -> Sku | None:
+        return self._skus.get(sku_id)
+
     def variant(self, product: str, unit: str) -> Sku | None:
         """The same product sold in another unit, if the catalog has it."""
         return self._variants.get((product, unit))

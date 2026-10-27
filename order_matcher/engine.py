@@ -26,6 +26,8 @@ REVIEW_BELOW = 0.90
 MAX_OPTIONS = 255           # the most options one Jev Choice accepts
 SEARCH_LIMIT = 50           # options from the wider search on the second pass
 KEEP_FROM_FIRST_PASS = 5    # the first pass's best guesses stay in the second pass
+ALTERNATIVES = 3            # next-best guesses kept on each line for a reviewer
+MIN_ALTERNATIVE = 0.05      # guesses less likely than this aren't worth a reviewer's attention
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,7 @@ class LineMatch:
     confidence: float
     second_pass: bool
     unit_fixed: bool
+    alternatives: tuple[Sku, ...] = ()  # the decider's next-best guesses, for a reviewer
 
     @property
     def needs_review(self) -> bool:
@@ -87,10 +90,12 @@ class Matcher:
             if (retry is not None and retry.choice != NONE_OF_THESE
                     and (best is None or retry.confidence > best.confidence)):
                 best = retry
-        if best is None:
+        chosen = self.catalog.get(best.choice) if best is not None else None
+        if chosen is None:  # "none of these" rules out the other options as guesses too
             return LineMatch(line, None, 0.0, second_pass, unit_fixed=False)
-        sku, unit_fixed = self.fix_unit(self.catalog[best.choice], line.unit)
-        return LineMatch(line, sku, best.confidence, second_pass, unit_fixed)
+        sku, unit_fixed = self.fix_unit(chosen, line.unit)
+        others = tuple(s for s in self._ranked(best, line.unit) if s != sku)[:ALTERNATIVES]
+        return LineMatch(line, sku, best.confidence, second_pass, unit_fixed, others)
 
     def fix_unit(self, sku: Sku, unit: str | None) -> tuple[Sku, bool]:
         """Switch to the unit the chef named, if the product is sold in it."""
@@ -102,6 +107,22 @@ class Matcher:
 
     def _ask(self, line: OrderLine, options: list[Option]) -> Choice | None:
         return self.decider.choose(line, options) if options else None
+
+    def _ranked(self, choice: Choice, unit: str | None) -> tuple[Sku, ...]:
+        """The choice's most likely SKUs, in the unit the chef named where possible."""
+        result: list[Sku] = []
+        for sku_id in sorted(choice.probabilities, key=choice.probabilities.get, reverse=True):
+            if choice.probabilities[sku_id] < MIN_ALTERNATIVE:
+                break
+            sku = self.catalog.get(sku_id)
+            if sku is None:  # NONE_OF_THESE, or anything else that isn't a SKU
+                continue
+            sku, _ = self.fix_unit(sku, unit)
+            if sku not in result:
+                result.append(sku)
+            if len(result) > ALTERNATIVES:  # one spare, in case the chosen SKU is among them
+                break
+        return tuple(result)
 
 
 def _one_per_product(options: list[Option], unit: str | None) -> list[Option]:

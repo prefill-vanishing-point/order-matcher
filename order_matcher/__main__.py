@@ -3,9 +3,11 @@
     python -m order_matcher customers
     python -m order_matcher match C007 "5 lb bananas, cs kale, 2 cases crimini"
     python -m order_matcher evaluate
+    python -m order_matcher serve
 """
 import argparse
 import json
+import logging
 import os
 import sys
 from datetime import date
@@ -15,6 +17,7 @@ from .deciders import JEV_KEY_ENV, Decider, JevDecider, LocalDecider, jev_reques
 from .engine import WINDOW_DAYS, Matcher
 from .evaluate import report, run
 from .parse import parse_line, split_order
+from .web import App, serve
 
 
 def make_decider(name: str) -> Decider:
@@ -68,6 +71,11 @@ def cmd_evaluate(args, catalog, history, customers):
     print(report(results, latencies, decider.name, args.show_errors))
 
 
+def cmd_serve(args, catalog, history, customers):
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    serve(App(catalog, history, customers, make_decider(args.decider)), args.host, args.port)
+
+
 def main(argv: list[str] | None = None) -> None:
     sys.stdout.reconfigure(errors="replace")  # some Windows consoles can't print every character
     parser = argparse.ArgumentParser(prog="python -m order_matcher",
@@ -87,12 +95,19 @@ def main(argv: list[str] | None = None) -> None:
     evaluate.add_argument("--show-errors", type=int, default=0, metavar="N",
                           help="list the first N wrong lines")
 
-    for p in (match, evaluate):
+    serve_cmd = sub.add_parser("serve", help="run the web app")
+    serve_cmd.add_argument("--host", default="127.0.0.1",
+                           help="address to listen on (use 0.0.0.0 when hosting)")
+    serve_cmd.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8000)),
+                           help="port to listen on (default: $PORT, or 8000)")
+
+    for p in (match, evaluate, serve_cmd):
         p.add_argument("--decider", choices=["auto", "jev", "local"], default="auto",
                        help=f"jev needs {JEV_KEY_ENV}; auto uses jev when it's set")
 
     args = parser.parse_args(argv)
-    commands = {"customers": cmd_customers, "match": cmd_match, "evaluate": cmd_evaluate}
+    commands = {"customers": cmd_customers, "match": cmd_match, "evaluate": cmd_evaluate,
+                "serve": cmd_serve}
     commands[args.command](args, *load())
 
 

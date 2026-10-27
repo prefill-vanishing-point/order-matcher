@@ -1,0 +1,21 @@
+# Render blueprint: https://render.com/docs/blueprint-spec
+# Render asks for TYPESAFE_API_KEY when you create the service; it is never stored in this repo.
+services:
+  - type: web
+    name: order-matcher
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m order_matcher serve --host 0.0.0.0
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: TYPESAFE_API_KEY
+        sync: false
+      - key: TRUST_PROXY
+        value: "1"
+      - key: ORDERS_PER_VISITOR
+        value: "20"
+      - key: ORDERS_PER_DAY
+        value: "300"

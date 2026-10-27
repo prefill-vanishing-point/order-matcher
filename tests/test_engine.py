@@ -103,6 +103,17 @@ class DecisionFlowTest(unittest.TestCase):
         self.match(decider, "5 lb bananas", "C3")
         self.assertEqual(decider.offered[0], ["BAN-LB"])
 
+    def test_alternatives_skip_the_choice_and_unlikely_guesses(self):
+        class Decider:
+            name = "fixed"
+
+            def choose(self, line, options):
+                return Choice("BAN-CS", 0.6, {"BAN-CS": 0.6, "KAL-CS": 0.3, "MCR-CS": 0.01})
+
+        [m] = self.match(Decider(), "bananas x2", "C1")
+        self.assertEqual(m.sku.sku, "BAN-CS")
+        self.assertEqual([s.sku for s in m.alternatives], ["KAL-CS"])
+
     def test_no_unit_offers_every_unit(self):
         decider = ScriptedDecider(("BAN-CS", 0.99))
         self.match(decider, "bananas x2", "C3")

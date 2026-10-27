@@ -126,12 +126,48 @@ python -m order_matcher match C003 "5 lb bananas" --show-request   # print the r
 
 The request format follows [docs.typesafe.ai/api](https://docs.typesafe.ai/api) as of October 2026. Jev is in early access, so the format may change.
 
+## Web app
+
+A page where anyone can paste an order, watch Jev match it, and work through the flagged lines the way order desk staff would: keep the suggestion, pick a next-best guess, or choose any catalog item. The finished order copies out as CSV.
+
+**Run it on your computer.** It needs one package, the [waitress](https://docs.pylonsproject.org/projects/waitress/) web server:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m order_matcher serve      # then open http://127.0.0.1:8000
+```
+
+**Put it online with Render** (free tier), so you can send people a link:
+
+1. Push this repo to GitHub.
+2. In [Render](https://render.com), choose **New → Blueprint** and connect the repo. Render reads `render.yaml`.
+3. When Render asks for `TYPESAFE_API_KEY`, paste your Jev key. It is stored in Render, not in the repo.
+4. Deploy. Render gives you an address like `https://order-matcher-xxxx.onrender.com`.
+
+Free Render services go to sleep after about 15 minutes without visitors, and the first visit afterwards takes up to a minute while the service wakes up. Before a meeting, open the link a minute early.
+
+**How the key and your credit are protected**
+
+- The browser never sees the key. It talks only to this server, and the server calls Jev.
+- Each order is capped at 25 lines and 2,000 characters.
+- Each visitor can match 20 orders per 10 minutes, and the whole site 300 orders a day. Change these with the `ORDERS_PER_VISITOR` and `ORDERS_PER_DAY` environment variables.
+- The same order for the same restaurant is answered from memory instead of calling Jev again, so clicking the examples costs nothing after the first time.
+- Pages are served with a strict Content Security Policy and can't be embedded in other sites.
+
+| Address | What it does |
+|---|---|
+| `GET /` | The page |
+| `GET /api/bootstrap` | Restaurants, catalog and examples for the page |
+| `POST /api/match` | Matches one order: `{"customer_id": "C003", "order": "2 cs kale, 5# limes"}` |
+| `GET /healthz` | Returns `ok`, for the host's health check |
+
 ## Next steps
 
 1. **Teach the system chef vocabulary**, which is behind most of the remaining misses. Learn aliases from staff corrections ("cukes" → cucumbers) and use them in two places: in the keyword search, and in the option descriptions Jev reads, such as "Arugula, baby (rocket)". The search could also match parts of words ("mint" in "spearmint"). Measure on a fresh test set, because this one has now been seen.
 2. **Shadow mode.** Run on real orders next to the order desk without acting on the output, then compare.
 3. **Tune thresholds on real data.** Plot review rate against accuracy for each threshold, possibly per customer.
-4. **Build a review screen** that shows each flagged line with the top three options to click.
+4. **Connect the review screen to a real order system.** The web app's review step ends in a CSV today. Confirmed lines could also feed back as purchase history.
 5. **Speed.** The median is 1.2 s per order, against the 0.41 s reported in the original write-up. The second pass adds a full round trip for about a third of lines.
 
 ## Layout
@@ -143,8 +179,12 @@ order_matcher/
   parse.py      splitting orders, reading quantities and units, text similarity
   data.py       catalog and purchase history
   evaluate.py   accuracy check
+  web.py        web server: page, JSON API, limits
+  web/          the page (HTML, CSS, JavaScript)
   __main__.py   command line
 scripts/generate_data.py   synthetic data
 data/                      generated catalog, customers, purchases, labelled orders
 tests/                     unit tests
+requirements.txt           waitress, for the web app only
+render.yaml                Render hosting setup
 ```
